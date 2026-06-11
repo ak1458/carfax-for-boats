@@ -30,7 +30,7 @@ create table documents (
   doc_type doc_type not null default 'other',
   extraction_json jsonb,
   extraction_model text,
-  extraction_confidence numeric,
+  extraction_confidence float8 check (extraction_confidence between 0 and 1),
   created_at timestamptz not null default now()
 );
 
@@ -42,8 +42,8 @@ create table service_events (
   document_id uuid references documents(id) on delete set null,
   event_date date not null,
   vendor text, description text,
-  cost_cents int, currency text not null default 'USD',
-  engine_hours numeric,
+  cost_cents bigint, currency text not null default 'USD',
+  engine_hours float8,
   parts jsonb not null default '[]',
   created_at timestamptz not null default now()
 );
@@ -52,7 +52,7 @@ create table hour_readings (
   id uuid primary key default gen_random_uuid(),
   system_id uuid not null references systems(id) on delete cascade,
   owner_id uuid not null references auth.users(id) on delete cascade,
-  hours numeric not null,
+  hours float8 not null,
   reading_date date not null,
   document_id uuid references documents(id) on delete set null,
   created_at timestamptz not null default now()
@@ -66,12 +66,14 @@ create table reminders (
   title text not null,
   rule_type reminder_rule not null,
   interval_months int, interval_hours int,
-  next_due_date date, next_due_hours numeric,
+  next_due_date date, next_due_hours float8,
   last_done_event_id uuid references service_events(id) on delete set null,
   status reminder_status not null default 'active',
   created_at timestamptz not null default now()
 );
 
+-- share_links are looked up ONLY via service role on the server (public share page).
+-- There is intentionally no anon SELECT policy; never query this table with the anon key.
 create table share_links (
   id uuid primary key default gen_random_uuid(),
   boat_id uuid not null references boats(id) on delete cascade,
@@ -80,6 +82,12 @@ create table share_links (
   revoked boolean not null default false,
   created_at timestamptz not null default now()
 );
+
+create index on systems(boat_id);
+create index on documents(boat_id);
+create index on service_events(boat_id, event_date desc);
+create index on hour_readings(system_id, reading_date desc);
+create index on reminders(boat_id, status);
 
 -- RLS: owner-only on everything. Share page bypasses via service role.
 alter table boats enable row level security;
@@ -99,7 +107,8 @@ create policy reminders_owner on reminders for all using (owner_id = auth.uid())
 create policy share_links_owner on share_links for all using (owner_id = auth.uid()) with check (owner_id = auth.uid());
 
 -- Private photo bucket; paths are {owner_id}/...
-insert into storage.buckets (id, name, public) values ('photos','photos',false)
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+  values ('photos','photos',false, 10485760, array['image/jpeg','image/png','image/webp'])
   on conflict (id) do nothing;
 
 create policy photos_owner_rw on storage.objects for all
