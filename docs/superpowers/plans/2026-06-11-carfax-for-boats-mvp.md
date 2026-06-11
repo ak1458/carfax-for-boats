@@ -4,9 +4,9 @@
 
 **Goal:** Boats-first transferable maintenance record app: photo → AI extraction → confirmed service history → reminders → public share-link record page.
 
-**Architecture:** Next.js 15 App Router (TypeScript) PWA talking to Supabase (Postgres + magic-link auth + Storage). A single `/api/extract` route calls Claude vision with tool-use JSON schemas per document type; extraction is advisory and every write is gated by a user confirm form. Pure-function libs (`extraction/schemas`, `reminders/due`, `share/token`) carry the logic and the tests; pages are thin.
+**Architecture:** Next.js 16 App Router (TypeScript) PWA talking to Supabase (Postgres + magic-link auth + Storage). A single `/api/extract` route calls Claude vision with tool-use JSON schemas per document type; extraction is advisory and every write is gated by a user confirm form. Pure-function libs (`extraction/schemas`, `reminders/due`, `share/token`) carry the logic and the tests; pages are thin.
 
-**Tech Stack:** Next.js 15, TypeScript, Supabase JS v2, `@anthropic-ai/sdk`, Zod, Vitest, Playwright, Resend (optional).
+**Tech Stack:** Next.js 16, TypeScript, Supabase JS v2, `@anthropic-ai/sdk`, Zod, Vitest, Playwright, Resend (optional).
 
 **Spec:** `docs/superpowers/specs/2026-06-11-carfax-for-boats-design.md`
 
