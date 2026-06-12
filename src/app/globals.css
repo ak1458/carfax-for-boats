@@ -47,3 +47,8 @@ a {
     color-scheme: dark;
   }
 }
+
+.low-confidence input { border: 2px solid #d97706; background: #fffbeb; }
+.flag { color: #d97706; font-size: 0.85em; }
+.photo-button { display: inline-block; padding: 1rem 1.5rem; background: #0c4a6e; color: white; border-radius: 8px; cursor: pointer; }
+

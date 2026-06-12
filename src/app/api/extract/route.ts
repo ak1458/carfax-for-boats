@@ -9,15 +9,32 @@ export async function POST(request: Request) {
   try { ({ user, supabase } = await requireUser()); }
   catch { return NextResponse.json({ error: "unauthenticated" }, { status: 401 }); }
 
-  const { document_id } = await request.json().catch(() => ({}));
-  if (!document_id) return NextResponse.json({ error: "document_id required" }, { status: 400 });
+  const body = await request.json().catch(() => ({}));
+  const { document_id, storage_path, doc_type } = body;
+  const EXTRACTABLE = ["receipt", "engine_plate", "hour_meter"] as const;
+  type ExtractableDocType = typeof EXTRACTABLE[number];
+  function isExtractable(t: unknown): t is ExtractableDocType {
+    return typeof t === "string" && (EXTRACTABLE as readonly string[]).includes(t);
+  }
 
-  const { data: doc } = await supabase.from("documents").select("doc_type, storage_path, owner_id").eq("id", document_id).single();
-  if (!doc || doc.owner_id !== user.id) return NextResponse.json({ error: "not found" }, { status: 404 });
-  if (!["receipt", "engine_plate", "hour_meter"].includes(doc.doc_type))
-    return NextResponse.json({ error: `doc_type ${doc.doc_type} not extractable` }, { status: 400 });
+  let rawDocType: unknown, storagePath: string, docId: string | null = null;
+  if (document_id) {
+    const { data: doc } = await supabase.from("documents").select("doc_type, storage_path, owner_id").eq("id", document_id).single();
+    if (!doc || doc.owner_id !== user.id) return NextResponse.json({ error: "not found" }, { status: 404 });
+    rawDocType = doc.doc_type; storagePath = doc.storage_path; docId = document_id;
+  } else if (storage_path && doc_type) {
+    if (typeof storage_path !== "string" || !storage_path.startsWith(`${user.id}/`))
+      return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    rawDocType = doc_type; storagePath = storage_path;
+  } else {
+    return NextResponse.json({ error: "document_id or storage_path+doc_type required" }, { status: 400 });
+  }
 
-  const { data: blob, error: dlErr } = await supabase.storage.from("photos").download(doc.storage_path);
+  if (!isExtractable(rawDocType))
+    return NextResponse.json({ error: `doc_type ${rawDocType} not extractable` }, { status: 400 });
+  const docType: ExtractableDocType = rawDocType;
+
+  const { data: blob, error: dlErr } = await supabase.storage.from("photos").download(storagePath);
   if (dlErr || !blob) return NextResponse.json({ error: "photo download failed" }, { status: 500 });
 
   const MAX_IMAGE_BYTES = 4_500_000; // Claude vision caps ~5MB; leave base64 headroom
@@ -31,7 +48,7 @@ export async function POST(request: Request) {
   const extType: Record<string, ImageInput["mediaType"]> = {
     ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp",
   };
-  const sniffed = extType[(doc.storage_path.match(/\.[a-z0-9]+$/i)?.[0] ?? "").toLowerCase()];
+  const sniffed = extType[(storagePath.match(/\.[a-z0-9]+$/i)?.[0] ?? "").toLowerCase()];
   const mediaType = (ALLOWED_TYPES as readonly string[]).includes(blob.type)
     ? (blob.type as ImageInput["mediaType"])
     : sniffed;
@@ -47,15 +64,17 @@ export async function POST(request: Request) {
   };
 
   try {
-    const result = await extractDocument(image, doc.doc_type);
-    const { error: updErr } = await supabase.from("documents").update({
-      extraction_json: result.extraction,
-      extraction_model: result.model,
-      extraction_confidence: result.confidence,
-    }).eq("id", document_id);
-    if (updErr) {
-      console.error("extraction persist failed:", updErr.message);
-      return NextResponse.json({ error: "PERSIST_FAILED", message: "Extraction could not be saved — try again" }, { status: 500 });
+    const result = await extractDocument(image, docType);
+    if (docId) {
+      const { error: updErr } = await supabase.from("documents").update({
+        extraction_json: result.extraction,
+        extraction_model: result.model,
+        extraction_confidence: result.confidence,
+      }).eq("id", docId);
+      if (updErr) {
+        console.error("extraction persist failed:", updErr.message);
+        return NextResponse.json({ error: "PERSIST_FAILED", message: "Extraction could not be saved — try again" }, { status: 500 });
+      }
     }
     return NextResponse.json(result);
   } catch (err) {
