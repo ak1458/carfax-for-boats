@@ -19,9 +19,10 @@ export async function createBoatWithEngine(values: {
 
   // Attach the plate photo as a document now that the boat exists (skip when manual entry had no photo)
   if (values.platePhotoPath) {
-    await supabase.from("documents").insert({
+    const { error: docErr } = await supabase.from("documents").insert({
       boat_id: boat.id, owner_id: user.id, storage_path: values.platePhotoPath, doc_type: "engine_plate",
     });
+    if (docErr) console.error("plate document insert failed:", docErr.message);
   }
 
   return { boatId: boat.id, systemId: system.id };
@@ -33,9 +34,17 @@ export async function createBoatWithEngine(values: {
  */
 export async function createFirstService(args: {
   boatId: string; systemId: string; receiptPhotoPath: string; documentId: string | null;
-  values: { event_date: string; vendor: string; description: string; cost_cents: string; engine_hours: string };
+  values: { event_date: string; vendor: string; description: string; cost_dollars: string; engine_hours: string };
 }) {
   const { supabase, user } = await requireUser();
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(args.values.event_date))
+    throw new Error("Please enter a valid date");
+  const hoursRaw = args.values.engine_hours;
+  if (hoursRaw && (!Number.isFinite(Number(hoursRaw)) || Number(hoursRaw) < 0))
+    throw new Error("Engine hours must be a positive number");
+  if (args.values.cost_dollars && (!Number.isFinite(Number(args.values.cost_dollars)) || Number(args.values.cost_dollars) < 0))
+    throw new Error("Cost must be a positive amount");
 
   let documentId: string | null = args.documentId;
   if (!documentId && args.receiptPhotoPath) {
@@ -51,14 +60,15 @@ export async function createFirstService(args: {
     event_date: args.values.event_date,
     vendor: args.values.vendor || null,
     description: args.values.description || null,
-    cost_cents: args.values.cost_cents ? Math.round(Number(args.values.cost_cents)) : null,
-    engine_hours: args.values.engine_hours ? Number(args.values.engine_hours) : null,
+    cost_cents: args.values.cost_dollars ? Math.round(Number(args.values.cost_dollars) * 100) : null,
+    engine_hours: hoursRaw ? Number(hoursRaw) : null,
   });
   if (evErr) throw new Error(evErr.message);
 
+  // Best-effort starter reminder; failure must not block onboarding completion.
   // Starter reminder: oil change every 100 hours or 12 months
   const nextDue = new Date(); nextDue.setMonth(nextDue.getMonth() + 12);
-  const hours = args.values.engine_hours ? Number(args.values.engine_hours) : null;
+  const hours = hoursRaw ? Number(hoursRaw) : null;
   await supabase.from("reminders").insert({
     boat_id: args.boatId, owner_id: user.id, system_id: args.systemId,
     title: "Engine oil & filter change",

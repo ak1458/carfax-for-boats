@@ -42,6 +42,7 @@ export default function ConfirmExtraction({ title, fields, submitLabel, onSubmit
           <input
             type={f.type} name={f.name} value={values[f.name]}
             onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
+            required={f.type === "date"}
           />
         </label>
       ))}

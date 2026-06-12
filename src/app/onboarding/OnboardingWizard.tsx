@@ -65,7 +65,11 @@ export default function OnboardingWizard() {
         fd("event_date", "Date", "date", stage.extraction.date),
         fd("vendor", "Vendor", "text", stage.extraction.vendor),
         { name: "description", label: "What was done", type: "text", value: "", confidence: 1 },
-        fd("cost_cents", "Total (cents)", "number", stage.extraction.total_cents),
+        {
+          name: "cost_dollars", label: "Total cost ($)", type: "number",
+          value: stage.extraction.total_cents ? (Number(stage.extraction.total_cents.value) / 100).toFixed(2) : "",
+          confidence: stage.extraction.total_cents?.confidence ?? 1,
+        },
         fd("engine_hours", "Engine hours at service", "number", stage.extraction.engine_hours),
       ]}
       onSubmit={async (v) => {
@@ -73,7 +77,7 @@ export default function OnboardingWizard() {
           boatId: stage.boatId, systemId: stage.systemId,
           receiptPhotoPath: stage.path, documentId: stage.documentId,
           values: { event_date: v.event_date, vendor: v.vendor, description: v.description,
-            cost_cents: v.cost_cents, engine_hours: v.engine_hours },
+            cost_dollars: v.cost_dollars, engine_hours: v.engine_hours },
         });
         router.push(`/boats/${stage.boatId}`);
       }}
