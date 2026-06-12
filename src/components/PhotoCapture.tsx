@@ -18,6 +18,7 @@ export default function PhotoCapture({ boatId, docType, label, onExtracted, onMa
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    e.target.value = "";
     setError(null);
     try {
       setBusy("Uploading photo…");

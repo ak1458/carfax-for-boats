@@ -28,7 +28,8 @@ export default function ConfirmExtraction({ title, fields, submitLabel, onSubmit
     e.preventDefault();
     setBusy(true); setError(null);
     try { await onSubmit(values); }
-    catch (err) { setError(err instanceof Error ? err.message : "Save failed"); setBusy(false); }
+    catch (err) { setError(err instanceof Error ? err.message : "Save failed"); }
+    finally { setBusy(false); }
   }
 
   return (

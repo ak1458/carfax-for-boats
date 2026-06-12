@@ -14,16 +14,23 @@ const TARGET_BYTES = 4_000_000;
 
 /** Downscale + re-encode to JPEG so uploads stay within Claude vision limits. */
 export async function downscaleImage(file: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, MAX_LONG_EDGE / Math.max(bitmap.width, bitmap.height));
-  if (scale === 1 && file.size <= TARGET_BYTES && file.type === "image/jpeg") return file;
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
-  if (!blob) throw new Error("Could not process the photo");
-  return blob;
+  if (file.type === "image/heic" || file.type === "image/heif" || /\.heic$|\.heif$/i.test(file.name)) {
+    throw new Error("iPhone HEIC photos aren't supported yet — tap 'Use Photo' in the camera, or choose a JPEG.");
+  }
+  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" } as ImageBitmapOptions);
+  try {
+    const scale = Math.min(1, MAX_LONG_EDGE / Math.max(bitmap.width, bitmap.height));
+    if (scale === 1 && file.size <= TARGET_BYTES && file.type === "image/jpeg") return file;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
+    if (!blob) throw new Error("Could not process the photo");
+    return blob;
+  } finally {
+    bitmap.close();
+  }
 }
 
 /** Upload photo to photos/{userId}/{timestamp}.jpg; returns storage path. */

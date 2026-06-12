@@ -4,6 +4,12 @@ import { extractDocument, ExtractionError, type ImageInput } from "@/lib/extract
 
 export const maxDuration = 60;
 
+const EXTRACTABLE = ["receipt", "engine_plate", "hour_meter"] as const;
+type ExtractableDocType = typeof EXTRACTABLE[number];
+function isExtractable(t: unknown): t is ExtractableDocType {
+  return typeof t === "string" && (EXTRACTABLE as readonly string[]).includes(t);
+}
+
 export async function POST(request: Request) {
   let user, supabase;
   try { ({ user, supabase } = await requireUser()); }
@@ -11,19 +17,25 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => ({}));
   const { document_id, storage_path, doc_type } = body;
-  const EXTRACTABLE = ["receipt", "engine_plate", "hour_meter"] as const;
-  type ExtractableDocType = typeof EXTRACTABLE[number];
-  function isExtractable(t: unknown): t is ExtractableDocType {
-    return typeof t === "string" && (EXTRACTABLE as readonly string[]).includes(t);
-  }
 
   let rawDocType: unknown, storagePath: string, docId: string | null = null;
   if (document_id) {
-    const { data: doc } = await supabase.from("documents").select("doc_type, storage_path, owner_id").eq("id", document_id).single();
+    const { data: doc } = await supabase.from("documents").select("doc_type, storage_path, owner_id, extraction_json, extraction_model, extraction_confidence").eq("id", document_id).single();
     if (!doc || doc.owner_id !== user.id) return NextResponse.json({ error: "not found" }, { status: 404 });
+    if (doc.extraction_json != null)
+      return NextResponse.json({
+        extraction: doc.extraction_json,
+        confidence: doc.extraction_confidence,
+        model: doc.extraction_model,
+        cached: true,
+      });
     rawDocType = doc.doc_type; storagePath = doc.storage_path; docId = document_id;
   } else if (storage_path && doc_type) {
-    if (typeof storage_path !== "string" || !storage_path.startsWith(`${user.id}/`))
+    if (
+      typeof storage_path !== "string" ||
+      storage_path.split("/").includes("..") ||
+      !storage_path.startsWith(`${user.id}/`)
+    )
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
     rawDocType = doc_type; storagePath = storage_path;
   } else {
