@@ -83,7 +83,8 @@ export async function markReminderDone(reminderId: string, boatId: string) {
   const next = rollForward(reminder, { doneDate: today, doneHours: null });
   const { error: updErr } = await supabase.from("reminders")
     .update({ ...next, last_done_event_id: event?.id ?? null })
-    .eq("id", reminderId);
+    .eq("id", reminderId)
+    .eq("boat_id", boatId);
   if (updErr) throw new Error(updErr.message);
 
   revalidatePath(`/boats/${boatId}`);

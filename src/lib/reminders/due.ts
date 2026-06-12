@@ -17,7 +17,7 @@ export function addMonthsClamped(isoDate: string, months: number): string {
   const [y, m, d] = isoDate.split("-").map(Number);
   const total = (m - 1) + months;
   const year = y + Math.floor(total / 12);
-  const month = (total % 12) + 1;
+  const month = ((total % 12) + 12) % 12 + 1;
   const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const day = Math.min(d, lastDay);
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -31,5 +31,7 @@ export function rollForward(
     const baseHours = done.doneHours ?? Number(reminder.next_due_hours ?? 0);
     return { next_due_hours: baseHours + Number(reminder.interval_hours ?? 0), next_due_date: null };
   }
-  return { next_due_hours: null, next_due_date: addMonthsClamped(done.doneDate, reminder.interval_months ?? 0) };
+  if (!reminder.interval_months)
+    throw new Error(`Calendar reminder ${reminder.id} has no interval_months`);
+  return { next_due_hours: null, next_due_date: addMonthsClamped(done.doneDate, reminder.interval_months) };
 }

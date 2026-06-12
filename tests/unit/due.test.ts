@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isDue, rollForward } from "@/lib/reminders/due";
+import { isDue, rollForward, addMonthsClamped } from "@/lib/reminders/due";
 import type { Reminder } from "@/lib/types";
 
 const base: Reminder = {
@@ -54,5 +54,15 @@ describe("rollForward", () => {
     const cal: Reminder = { ...base, rule_type: "calendar", interval_hours: null, next_due_hours: null, interval_months: 1, next_due_date: "2026-01-31" };
     expect(rollForward(cal, { doneDate: "2026-01-31", doneHours: null }))
       .toEqual({ next_due_hours: null, next_due_date: "2026-02-28" });
+  });
+
+  it("handles negative month offsets", () => {
+    expect(addMonthsClamped("2026-03-15", -1)).toBe("2026-02-15");
+    expect(addMonthsClamped("2026-01-15", -2)).toBe("2025-11-15");
+  });
+
+  it("throws for calendar reminder without interval_months", () => {
+    const cal: Reminder = { ...base, rule_type: "calendar", interval_hours: null, next_due_hours: null, interval_months: null, next_due_date: "2026-06-01" };
+    expect(() => rollForward(cal, { doneDate: "2026-06-11", doneHours: null })).toThrow();
   });
 });

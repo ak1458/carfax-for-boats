@@ -10,15 +10,19 @@ export async function GET(request: Request) {
   const supabase = supabaseAdmin();
   const today = new Date().toISOString().slice(0, 10);
 
-  const { data: reminders } = await supabase.from("reminders").select("*").eq("status", "active");
-  const { data: readings } = await supabase.from("hour_readings").select("system_id, hours, reading_date").order("reading_date", { ascending: false });
+  const QUERY_CAP = 5000; // TODO: replace with per-system latest-reading query before beta scale
+  const { data: reminders } = await supabase.from("reminders").select("*").eq("status", "active").limit(QUERY_CAP);
+  if ((reminders?.length ?? 0) === QUERY_CAP) console.warn("cron: reminders hit query cap — results may be incomplete");
+  const { data: readings } = await supabase.from("hour_readings").select("system_id, hours, reading_date").order("reading_date", { ascending: false }).limit(QUERY_CAP);
+  if ((readings?.length ?? 0) === QUERY_CAP) console.warn("cron: readings hit query cap — latest-hours map may be incomplete");
   const latest = new Map<string, number>();
   for (const r of readings ?? []) if (!latest.has(r.system_id)) latest.set(r.system_id, Number(r.hours));
 
   const due = ((reminders ?? []) as Reminder[]).filter((rem) =>
     isDue(rem, rem.system_id ? latest.get(rem.system_id) ?? null : null, today));
-  if (due.length === 0 || !process.env.RESEND_API_KEY)
-    return NextResponse.json({ due: due.length, emailed: 0 });
+  if (due.length === 0) return NextResponse.json({ due: 0, emailed: 0 });
+  if (!process.env.RESEND_API_KEY)
+    return NextResponse.json({ due: due.length, emailed: 0, note: "RESEND_API_KEY not configured" });
 
   // One digest per owner
   const byOwner = new Map<string, Reminder[]>();
@@ -27,6 +31,7 @@ export async function GET(request: Request) {
   const { Resend } = await import("resend");
   const resend = new Resend(process.env.RESEND_API_KEY);
   let emailed = 0;
+  // TODO: N+1 auth lookups — batch or parallelize beyond MVP scale.
   for (const [ownerId, items] of byOwner) {
     const { data: userData } = await supabase.auth.admin.getUserById(ownerId);
     const email = userData?.user?.email;
