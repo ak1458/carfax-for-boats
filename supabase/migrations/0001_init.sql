@@ -1,3 +1,7 @@
+-- NOTE: fractional columns use float8 (not numeric) deliberately — PostgREST
+-- serializes numeric as JSON strings, which would break the app's number-typed
+-- TS contracts. cost_cents is bigint (int4 cents overflows at ~$21k).
+
 create type system_kind as enum ('engine','generator','other');
 create type doc_type as enum ('receipt','engine_plate','hour_meter','other');
 create type reminder_rule as enum ('calendar','hours');
