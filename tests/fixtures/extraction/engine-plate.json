@@ -1,0 +1,6 @@
+{
+  "make": { "value": "Yanmar", "confidence": 0.97 },
+  "model": { "value": "4JH57", "confidence": 0.93 },
+  "serial": { "value": "E12345", "confidence": 0.88 },
+  "horsepower": { "value": 57, "confidence": 0.9 }
+}

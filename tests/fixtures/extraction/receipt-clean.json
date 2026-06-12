@@ -1,0 +1,13 @@
+{
+  "vendor": { "value": "West Marine", "confidence": 0.98 },
+  "date": { "value": "2026-05-01", "confidence": 0.95 },
+  "total_cents": { "value": 12999, "confidence": 0.97 },
+  "currency": { "value": "USD", "confidence": 0.99 },
+  "line_items": [
+    { "description": { "value": "Quicksilver oil filter", "confidence": 0.96 },
+      "part_number": { "value": "35-866340Q03", "confidence": 0.9 },
+      "quantity": { "value": 2, "confidence": 0.95 },
+      "price_cents": { "value": 2599, "confidence": 0.94 } }
+  ],
+  "engine_hours": { "value": 412, "confidence": 0.85 }
+}
