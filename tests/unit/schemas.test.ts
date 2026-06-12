@@ -56,3 +56,31 @@ describe("overallConfidence", () => {
     expect(overallConfidence(parsed)).toBe(0.4);
   });
 });
+
+describe("model-output quirks", () => {
+  it("treats null optional fields as absent", () => {
+    const parsed = receiptSchema.parse({
+      vendor: cf("Z"), date: cf("2026-05-01"), total_cents: cf(100), currency: cf("USD"),
+      line_items: [{ description: cf("zinc anode"), part_number: null, quantity: null }],
+      engine_hours: null,
+    });
+    expect(parsed.engine_hours).toBeUndefined();
+    expect(parsed.line_items[0].part_number).toBeUndefined();
+  });
+
+  it("strips unknown top-level keys", () => {
+    const parsed = hourMeterSchema.parse({ hours: cf(100), extracted_by: "claude" });
+    expect("extracted_by" in parsed).toBe(false);
+  });
+
+  it("rejects logically invalid dates", () => {
+    expect(() => receiptSchema.parse({
+      vendor: cf("X"), date: cf("2026-13-45"), total_cents: cf(1), currency: cf("USD"), line_items: [],
+    })).toThrow();
+  });
+
+  it("propagates zero confidence", () => {
+    const parsed = hourMeterSchema.parse({ hours: cf(50, 0) });
+    expect(overallConfidence(parsed)).toBe(0);
+  });
+});
