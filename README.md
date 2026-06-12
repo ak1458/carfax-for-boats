@@ -1,5 +1,11 @@
 # Boat Record — Carfax for Boats
 
+[![CI](https://github.com/ak1458/carfax-for-boats/actions/workflows/ci.yml/badge.svg)](https://github.com/ak1458/carfax-for-boats/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Next.js 16](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org)
+[![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20Auth%20%2B%20Storage-3FCF8E?logo=supabase)](https://supabase.com)
+[![Claude API](https://img.shields.io/badge/Claude-vision%20extraction-d97757)](https://docs.claude.com)
+
 Transferable maintenance record for boat owners. Photograph your engine plate, receipts, and hour meters; Claude vision extracts structured data into a systems inventory and service history. Reminders run on engine hours or the calendar, and a share link gives buyers and brokers a read-only, photo-backed ("verified") service record.
 
 - Spec: [docs/superpowers/specs/2026-06-11-carfax-for-boats-design.md](docs/superpowers/specs/2026-06-11-carfax-for-boats-design.md)
@@ -44,3 +50,10 @@ The app currently has **no live Supabase project** — this is the deferred setu
 - Every saved record keeps its source photo — that's the "verified" in the share page's verified record.
 - RLS is owner-only on all tables (denormalized `owner_id`, no policy joins). The public share page (`/r/[token]`) reads via the service role after validating the unguessable 192-bit token; revoking a link kills the page.
 - Money is stored as integer cents (`bigint`), displayed as dollars. Fractional columns are `float8`, not `numeric` — PostgREST serializes `numeric` as strings.
+
+## Contributing & policies
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) — conventions that PRs must follow (advisory extraction, cents/dollars, RLS ownership, env-free builds)
+- [SECURITY.md](SECURITY.md) — private vulnerability reporting and researcher scope notes
+- [CHANGELOG.md](CHANGELOG.md) — release history
+- [LICENSE](LICENSE) — MIT

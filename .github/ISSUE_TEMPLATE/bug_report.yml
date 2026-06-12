@@ -1,0 +1,38 @@
+name: Bug report
+description: Something broken — wrong extraction, crash, bad data
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, what happened instead?
+      placeholder: Snapped a receipt photo on iPhone Safari; extraction returned the wrong total.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Photo capture / upload
+        - AI extraction (receipt / engine plate / hour meter)
+        - Onboarding
+        - Dashboard / service history
+        - Reminders
+        - Share link / public record page
+        - Auth / login
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device / browser
+      placeholder: iPhone 15, Safari 18
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console output or error message
+      render: shell

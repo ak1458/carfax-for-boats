@@ -1,0 +1,25 @@
+name: Feature request
+description: Suggest an improvement or new capability
+title: "[feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the owner/buyer/broker pain point, not just the feature.
+      placeholder: As a buyer reviewing a shared record, I want to see total spend per year so I can judge upkeep.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - Boats (current vertical)
+        - New asset class (RV / horse / classic car)
+        - Platform / infrastructure

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { extractDocument, ExtractionError } from "@/lib/extraction/extract";
+import { extractDocument } from "@/lib/extraction/extract";
 import receiptClean from "../fixtures/extraction/receipt-clean.json";
 import receiptMessy from "../fixtures/extraction/receipt-messy.json";
 import plateFix from "../fixtures/extraction/engine-plate.json";
