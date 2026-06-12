@@ -1,5 +1,7 @@
 "use server";
 import { requireUser } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
+import { rollForward } from "@/lib/reminders/due";
 
 export async function createServiceEvent(args: {
   boatId: string; receiptPhotoPath: string | null; documentId: string | null;
@@ -62,4 +64,27 @@ export async function createHourReading(args: {
     hours, reading_date: args.values.reading_date,
   });
   if (error) throw new Error(error.message);
+}
+
+export async function markReminderDone(reminderId: string, boatId: string) {
+  const { supabase, user } = await requireUser();
+
+  const { data: reminder } = await supabase.from("reminders").select("*")
+    .eq("id", reminderId).eq("boat_id", boatId).single();
+  if (!reminder) throw new Error("Reminder not found");
+
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: event, error: evErr } = await supabase.from("service_events")
+    .insert({ boat_id: boatId, owner_id: user.id, system_id: reminder.system_id,
+      event_date: today, description: `${reminder.title} (marked done from reminder)` })
+    .select("id").single();
+  if (evErr) throw new Error(evErr.message);
+
+  const next = rollForward(reminder, { doneDate: today, doneHours: null });
+  const { error: updErr } = await supabase.from("reminders")
+    .update({ ...next, last_done_event_id: event?.id ?? null })
+    .eq("id", reminderId);
+  if (updErr) throw new Error(updErr.message);
+
+  revalidatePath(`/boats/${boatId}`);
 }

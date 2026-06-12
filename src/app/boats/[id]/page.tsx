@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/supabase/server";
 import { isDue } from "@/lib/reminders/due";
+import { markReminderDone } from "./actions";
 import type { HourReading, Reminder, ServiceEvent, System } from "@/lib/types";
 
 export default async function BoatPage({ params }: { params: Promise<{ id: string }> }) {
@@ -41,7 +42,13 @@ export default async function BoatPage({ params }: { params: Promise<{ id: strin
       {due.length > 0 && (
         <section>
           <h2>Due now</h2>
-          <ul>{due.map((r: Reminder) => <li key={r.id}>⚠ {r.title}</li>)}</ul>
+          <ul>{due.map((r: Reminder) => (
+            <li key={r.id}>⚠ {r.title}{" "}
+              <form action={markReminderDone.bind(null, r.id, id)} style={{ display: "inline" }}>
+                <button type="submit">Mark done</button>
+              </form>
+            </li>
+          ))}</ul>
         </section>
       )}
 
