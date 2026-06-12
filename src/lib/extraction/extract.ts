@@ -3,13 +3,21 @@ import { z } from "zod";
 import { schemaForDocType, overallConfidence } from "./schemas";
 
 export class ExtractionError extends Error {
-  constructor(public code: "UNREADABLE" | "INVALID_OUTPUT" | "NO_TOOL_USE" | "API_ERROR", message: string) {
+  constructor(public code: "UNREADABLE" | "INVALID_OUTPUT" | "NO_TOOL_USE" | "API_ERROR" | "TRUNCATED", message: string) {
     super(message);
   }
 }
 
 export interface ImageInput { base64: string; mediaType: "image/jpeg" | "image/png" | "image/webp"; }
 export interface ExtractionResult { extraction: unknown; confidence: number; model: string; }
+
+const SYSTEM = `You extract structured data from photos of marine maintenance documents.
+Calibrate confidence honestly: lower it for glare, handwriting, blur, partial occlusion,
+or ambiguous characters (0/O, 1/I, 5/S). Never guess a value to appear confident —
+omit absent fields entirely. Report {"unreadable": true, "reason": "..."} when the
+image cannot be read at all.`;
+
+const MAX_TOKENS: Record<string, number> = { receipt: 4096, engine_plate: 1024, hour_meter: 512 };
 
 const PROMPTS: Record<string, string> = {
   receipt: "Extract structured data from this marine service receipt. Amounts in integer cents. Dates as YYYY-MM-DD. If a field is absent, omit it. Set per-field confidence 0-1 honestly — use low values when unsure.",
@@ -57,7 +65,8 @@ export async function extractDocument(
   try {
     response = await client.messages.create({
       model,
-      max_tokens: 2048,
+      system: SYSTEM,
+      max_tokens: MAX_TOKENS[docType],
       tools: [{ name: "record_extraction", description: "Record the extracted document data", input_schema: toolSchemaFor(docType) as never }],
       tool_choice: { type: "tool", name: "record_extraction" },
       messages: [{
@@ -71,6 +80,9 @@ export async function extractDocument(
   } catch (err) {
     throw new ExtractionError("API_ERROR", err instanceof Error ? err.message : "Claude API call failed");
   }
+
+  if (response.stop_reason === "max_tokens")
+    throw new ExtractionError("TRUNCATED", "Model output hit the token limit before completing extraction");
 
   const toolUse = response.content.find((b) => b.type === "tool_use");
   if (!toolUse || toolUse.type !== "tool_use") throw new ExtractionError("NO_TOOL_USE", "Model returned no tool_use block");
