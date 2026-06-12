@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/supabase/server";
 import { isDue } from "@/lib/reminders/due";
-import type { Reminder, ServiceEvent, System } from "@/lib/types";
+import type { HourReading, Reminder, ServiceEvent, System } from "@/lib/types";
 
 export default async function BoatPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -11,12 +11,16 @@ export default async function BoatPage({ params }: { params: Promise<{ id: strin
   const { data: boat } = await supabase.from("boats").select("*").eq("id", id).single();
   if (!boat) notFound();
 
-  const [{ data: systems }, { data: events }, { data: reminders }, { data: readings }] = await Promise.all([
-    supabase.from("systems").select("*").eq("boat_id", id),
+  const { data: systems } = await supabase.from("systems").select("*").eq("boat_id", id);
+  const systemIds = (systems ?? []).map((s: System) => s.id);
+
+  const [{ data: events }, { data: reminders }, { data: readings }] = await Promise.all([
     supabase.from("service_events").select("*").eq("boat_id", id).order("event_date", { ascending: false }),
     supabase.from("reminders").select("*").eq("boat_id", id).eq("status", "active"),
-    supabase.from("hour_readings").select("*").order("reading_date", { ascending: false }),
-  ]);
+    systemIds.length
+      ? supabase.from("hour_readings").select("*").in("system_id", systemIds).order("reading_date", { ascending: false })
+      : Promise.resolve({ data: [] as HourReading[] }),
+  ] as const);
 
   const latestHoursBySystem = new Map<string, number>();
   for (const r of readings ?? []) if (!latestHoursBySystem.has(r.system_id)) latestHoursBySystem.set(r.system_id, Number(r.hours));

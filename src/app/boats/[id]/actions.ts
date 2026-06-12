@@ -16,6 +16,12 @@ export async function createServiceEvent(args: {
   if (costRaw && (!Number.isFinite(Number(costRaw)) || Number(costRaw) < 0))
     throw new Error("Cost must be a positive amount");
 
+  if (args.values.system_id) {
+    const { data: sys } = await supabase.from("systems")
+      .select("id").eq("id", args.values.system_id).eq("boat_id", args.boatId).single();
+    if (!sys) throw new Error("System not found on this boat");
+  }
+
   let documentId = args.documentId;
   if (!documentId && args.receiptPhotoPath) {
     const { data: doc, error: docErr } = await supabase.from("documents")
@@ -46,6 +52,10 @@ export async function createHourReading(args: {
   const hours = Number(args.values.hours);
   if (!args.values.hours || !Number.isFinite(hours) || hours < 0)
     throw new Error("Hours must be a positive number");
+
+  const { data: sys } = await supabase.from("systems")
+    .select("id").eq("id", args.systemId).single();
+  if (!sys) throw new Error("System not found");
 
   const { error } = await supabase.from("hour_readings").insert({
     system_id: args.systemId, owner_id: user.id, document_id: args.documentId,
