@@ -18,6 +18,12 @@ export async function supabaseServer() {
   );
 }
 
+/**
+ * Auth contract: middleware already redirects unauthenticated users for all
+ * non-public routes, so this throw is a backstop, not a UX path. Callers
+ * (pages, server actions, API routes) may rely on it without try/catch;
+ * API routes that want a clean 401 should catch "UNAUTHENTICATED".
+ */
 export async function requireUser() {
   const supabase = await supabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
