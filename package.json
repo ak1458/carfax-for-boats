@@ -30,7 +30,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "typescript": "^5",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.11"
   },
   "optionalDependencies": {
     "@emnapi/runtime": "^1.11.0"
